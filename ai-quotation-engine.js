@@ -243,6 +243,126 @@ const AIQuotationEngine = {
   },
 
   /**
+   * 公司規定毛利率級距規則表 (依報價金額)
+   * 小於10萬 -> 30-35%
+   * 11~50萬  -> 25-30%
+   * 51~99萬  -> 20-25%
+   * 大於100萬 -> 16-20%
+   */
+  MARGIN_POLICY_RULES: [
+    {
+      id: 'tier1',
+      label: '小於10萬',
+      sublabel: 'NT$ 0 ~ 9.99萬',
+      minAmount: 0,
+      maxAmount: 100000,
+      minMargin: 30,
+      maxMargin: 35,
+      defaultMargin: 35,
+      rangeText: '30% ~ 35%',
+      desc: '零星保養、單次除草割樹、小型線路查修'
+    },
+    {
+      id: 'tier2',
+      label: '11~50萬',
+      sublabel: 'NT$ 10萬 ~ 50萬',
+      minAmount: 100000,
+      maxAmount: 500000,
+      minMargin: 25,
+      maxMargin: 30,
+      defaultMargin: 30,
+      rangeText: '25% ~ 30%',
+      desc: '中型案場定期巡檢維護、模組水洗工程'
+    },
+    {
+      id: 'tier3',
+      label: '51~99萬',
+      sublabel: 'NT$ 50萬 ~ 99.9萬',
+      minAmount: 500000,
+      maxAmount: 1000000,
+      minMargin: 20,
+      maxMargin: 25,
+      defaultMargin: 25,
+      rangeText: '20% ~ 25%',
+      desc: '全年度維運保養合約、高低壓機電整修'
+    },
+    {
+      id: 'tier4',
+      label: '大於100萬',
+      sublabel: 'NT$ 100萬以上',
+      minAmount: 1000000,
+      maxAmount: Infinity,
+      minMargin: 16,
+      maxMargin: 20,
+      defaultMargin: 20,
+      rangeText: '16% ~ 20%',
+      desc: '大型電廠整建、儲能系統併網大修'
+    }
+  ],
+
+  /**
+   * 取得特定報價金額所屬之公司規定毛利率級距
+   * @param {number} amount 報價金額 (未稅銷售額)
+   */
+  getPolicyRuleForAmount(amount) {
+    const val = Number(amount) || 0;
+    if (val < 100000) return this.MARGIN_POLICY_RULES[0];
+    if (val <= 500000) return this.MARGIN_POLICY_RULES[1];
+    if (val < 1000000) return this.MARGIN_POLICY_RULES[2];
+    return this.MARGIN_POLICY_RULES[3];
+  },
+
+  /**
+   * 依據廠商成本快速估算所屬級距（若尚未設定報價額時）
+   * @param {number} cost 廠商進貨成本 (未稅)
+   */
+  estimatePolicyRuleByCost(cost) {
+    const c = Number(cost) || 0;
+    // 預估以 25%~30% 毛利率反推概算報價
+    const estimatedQuote = c / 0.72;
+    return this.getPolicyRuleForAmount(estimatedQuote);
+  },
+
+  /**
+   * 檢核當前報價金額與設定之毛利率是否符合公司規定
+   * @param {number} salesAmount 報價金額 (未稅)
+   * @param {number} currentMargin 當前毛利率 %
+   */
+  checkMarginCompliance(salesAmount, currentMargin) {
+    const rule = this.getPolicyRuleForAmount(salesAmount);
+    const margin = Number(currentMargin) || 0;
+
+    if (margin < rule.minMargin) {
+      return {
+        status: 'BELOW_STANDARD',
+        compliant: false,
+        rule: rule,
+        badgeClass: 'bg-red-500/20 text-red-300 border-red-500/40',
+        icon: 'fa-triangle-exclamation text-red-400',
+        message: `⚠️ 低於公司規定標準（該級距規範下限為 ${rule.minMargin}%），送出前需專案主管特准。`
+      };
+    } else if (margin > rule.maxMargin) {
+      return {
+        status: 'ABOVE_STANDARD',
+        compliant: true,
+        rule: rule,
+        badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+        icon: 'fa-gem text-blue-400',
+        message: `✨ 優於公司規定標準（規範為 ${rule.rangeText}），獲利表現優異！`
+      };
+    } else {
+      return {
+        status: 'COMPLIANT',
+        compliant: true,
+        rule: rule,
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        icon: 'fa-circle-check text-emerald-400',
+        message: `✅ 完全符合公司規定毛利率標準（${rule.rangeText}）。`
+      };
+    }
+  },
+
+  /**
    * 依據業務自訂對外銷售總價，反算毛利額與毛利率
    * @param {number} totalCost 
    * @param {number} targetSalesPrice 業務欲報價之未稅總額

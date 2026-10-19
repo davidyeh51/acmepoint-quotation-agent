@@ -390,22 +390,113 @@
             </div>
           </div>
 
-          <!-- 毛利率快捷調節按鈕群組 -->
+          <!-- 公司規定毛利率級距規範表 (依報價金額) -->
+          <div class="bg-slate-800/90 rounded-xl p-3.5 border border-slate-700/80 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-scale-balanced text-amber-400 text-xs"></i>
+                <span class="text-xs font-bold text-slate-200">公司規定毛利率級距規範（依報價金額自動匹配）</span>
+              </div>
+              <span id="tier-active-summary" class="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 font-medium">
+                當前報價判定中...
+              </span>
+            </div>
+
+            <!-- 4 大級距卡片 (小於10萬 / 11~50萬 / 51~99萬 / 大於100萬) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+              <!-- Tier 1: 小於10萬 -->
+              <div id="card-tier-tier1" class="tier-card p-3 rounded-lg border border-slate-700 bg-slate-900/60 transition-all cursor-pointer hover:border-amber-400/60" onclick="applyTierDefault('tier1')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white text-xs">小於 10 萬</span>
+                  <span id="badge-tier-tier1" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-amber-400 text-slate-900 font-bold">當前適用</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mb-1.5">&lt; NT$ 100,000</div>
+                <div class="flex items-baseline justify-between">
+                  <span class="text-amber-400 font-mono font-bold text-sm">30% ~ 35%</span>
+                  <div class="space-x-1">
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(30)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">30%</button>
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(35)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">35%</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tier 2: 11~50萬 -->
+              <div id="card-tier-tier2" class="tier-card p-3 rounded-lg border border-slate-700 bg-slate-900/60 transition-all cursor-pointer hover:border-amber-400/60" onclick="applyTierDefault('tier2')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white text-xs">11 ~ 50 萬</span>
+                  <span id="badge-tier-tier2" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-amber-400 text-slate-900 font-bold">當前適用</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mb-1.5">NT$ 10萬 ~ 50萬</div>
+                <div class="flex items-baseline justify-between">
+                  <span class="text-amber-400 font-mono font-bold text-sm">25% ~ 30%</span>
+                  <div class="space-x-1">
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(25)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">25%</button>
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(30)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">30%</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tier 3: 51~99萬 -->
+              <div id="card-tier-tier3" class="tier-card p-3 rounded-lg border border-slate-700 bg-slate-900/60 transition-all cursor-pointer hover:border-amber-400/60" onclick="applyTierDefault('tier3')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white text-xs">51 ~ 99 萬</span>
+                  <span id="badge-tier-tier3" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-amber-400 text-slate-900 font-bold">當前適用</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mb-1.5">NT$ 50萬 ~ 99.9萬</div>
+                <div class="flex items-baseline justify-between">
+                  <span class="text-amber-400 font-mono font-bold text-sm">20% ~ 25%</span>
+                  <div class="space-x-1">
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(20)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">20%</button>
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(25)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">25%</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tier 4: 大於100萬 -->
+              <div id="card-tier-tier4" class="tier-card p-3 rounded-lg border border-slate-700 bg-slate-900/60 transition-all cursor-pointer hover:border-amber-400/60" onclick="applyTierDefault('tier4')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-bold text-white text-xs">大於 100 萬</span>
+                  <span id="badge-tier-tier4" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-amber-400 text-slate-900 font-bold">當前適用</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mb-1.5">&ge; NT$ 1,000,000</div>
+                <div class="flex items-baseline justify-between">
+                  <span class="text-amber-400 font-mono font-bold text-sm">16% ~ 20%</span>
+                  <div class="space-x-1">
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(16)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">16%</button>
+                    <button type="button" onclick="event.stopPropagation(); applyPresetMargin(20)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 border border-slate-600">20%</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 即時合規檢核橫條 (Live Compliance Status Banner) -->
+            <div id="margin-compliance-banner" class="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-700 text-xs gap-2">
+              <div class="flex items-center gap-2">
+                <i id="compliance-icon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+                <span id="compliance-text" class="text-slate-300">檢核計算中...</span>
+              </div>
+              <button type="button" onclick="applyActiveTierDefault()" class="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 text-[11px] font-semibold transition self-start sm:self-auto flex items-center gap-1">
+                <i class="fa-solid fa-bolt"></i>
+                <span>一鍵套用當前級距標準</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 毛利率微調與自訂區 -->
           <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
             <div class="md:col-span-8 space-y-2">
               <div class="flex items-center justify-between text-xs text-slate-300">
-                <span>快速選擇規定毛利率 (Gross Margin Rate %)</span>
+                <span>微調毛利率 (Gross Margin Rate %)</span>
                 <span class="font-mono text-amber-400 font-bold" id="margin-slider-value">46.7 %</span>
               </div>
               <div class="flex flex-wrap gap-2">
-                <button onclick="applyPresetMargin(15)" class="preset-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">15%</button>
-                <button onclick="applyPresetMargin(20)" class="preset-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">20%</button>
-                <button onclick="applyPresetMargin(25)" class="preset-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">25%</button>
-                <button onclick="applyPresetMargin(30)" class="preset-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">30%</button>
-                <button onclick="applyPresetMargin(35)" class="preset-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">35%</button>
-                <button onclick="applyPresetMargin(40)" class="preset-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">40%</button>
-                <button onclick="applyPresetMargin(46.67)" class="preset-btn px-3 py-1 rounded bg-amber-500 text-slate-900 font-bold text-xs shadow-sm">
-                  ★ 46.7% (範本定價)
+                <button onclick="applyPresetMargin(16)" class="preset-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">16%</button>
+                <button onclick="applyPresetMargin(20)" class="preset-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">20%</button>
+                <button onclick="applyPresetMargin(25)" class="preset-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">25%</button>
+                <button onclick="applyPresetMargin(30)" class="preset-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">30%</button>
+                <button onclick="applyPresetMargin(35)" class="preset-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-700">35%</button>
+                <button onclick="applyPresetMargin(46.67)" class="preset-btn px-2.5 py-1 rounded bg-amber-500 text-slate-900 font-bold text-xs shadow-sm">
+                  ★ 46.7% (範本特案)
                 </button>
               </div>
               <!-- 毛利率滑桿 -->
@@ -419,7 +510,7 @@
                 <span class="text-xs text-slate-400">NT$</span>
                 <input type="number" id="ws-target-sales-input" oninput="onTargetSalesInput(this.value)" value="45000" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm font-mono font-bold text-amber-300 focus:outline-none">
               </div>
-              <span class="text-[10px] text-slate-400 block">系統自動按毛利率公式反推銷售利潤</span>
+              <span class="text-[10px] text-slate-400 block">系統自動按毛利率公式反推銷售利潤與核對級距</span>
             </div>
           </div>
 

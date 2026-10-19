@@ -345,8 +345,14 @@ function transferToWorkstation() {
   AppState.workstation.totalCost = vendorData.subtotal || 24000;
   AppState.workstation.projectName = (AppState.workstation.customerName || '客戶') + '(' + (AppState.workstation.siteName || '案場') + ')-' + (vendorData.project_name.includes('除草') ? '除草工程' : vendorData.project_name);
 
-  // 預設套用 46.7% 毛利率或範本定價
-  applyPresetMargin(46.67);
+  // 依據公司規定毛利率規則，自動評估所屬級距並套用預設標準毛利率
+  const estimatedRule = AIQuotationEngine.estimatePolicyRuleByCost(AppState.workstation.totalCost);
+  // 若為大安龜殼除草範本特案，套用範本定價 46.7%；一般案場自動套用該級距規定預設值
+  if (AppState.workstation.totalCost === 24000 && vendorData.project_name.includes('大安龜殼')) {
+    applyPresetMargin(46.67);
+  } else {
+    applyPresetMargin(estimatedRule.defaultMargin);
+  }
 
   updateWorkstationUI();
   switchTab('review-workstation');
@@ -413,6 +419,7 @@ function applyPresetMargin(rate) {
 
   reformatWorkstationItems();
   updateFinancialKPIs();
+  updatePolicyTierHighlight();
 }
 
 // 毛利率滑桿拉動
@@ -439,6 +446,71 @@ function onTargetSalesInput(val) {
 
   reformatWorkstationItems();
   updateFinancialKPIs();
+  updatePolicyTierHighlight();
+}
+
+// 更新公司毛利率規範級距高亮與即時合規檢核
+function updatePolicyTierHighlight() {
+  const ws = AppState.workstation;
+  const currentSales = ws.subtotal || 0;
+  const currentMargin = ws.marginRate || 0;
+
+  // 1. 取得當前金額匹配之公司規定級距
+  const activeRule = AIQuotationEngine.getPolicyRuleForAmount(currentSales);
+
+  // 2. 更新 4 大卡片的高亮與「當前適用」徽章
+  AIQuotationEngine.MARGIN_POLICY_RULES.forEach(r => {
+    const card = document.getElementById(`card-tier-${r.id}`);
+    const badge = document.getElementById(`badge-tier-${r.id}`);
+    if (card && badge) {
+      if (r.id === activeRule.id) {
+        card.className = 'tier-card p-3 rounded-lg border-2 border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/40 transition-all cursor-pointer shadow-md';
+        badge.classList.remove('hidden');
+      } else {
+        card.className = 'tier-card p-3 rounded-lg border border-slate-700 bg-slate-900/60 opacity-80 hover:opacity-100 transition-all cursor-pointer hover:border-slate-500';
+        badge.classList.add('hidden');
+      }
+    }
+  });
+
+  // 3. 更新級距判定文字
+  const summaryEl = document.getElementById('tier-active-summary');
+  if (summaryEl) {
+    summaryEl.innerText = `報價未稅 NT$ ${currentSales.toLocaleString()} ➔ 適用級距【${activeRule.label}】(${activeRule.rangeText})`;
+  }
+
+  // 4. 合規檢核與提示橫條更新
+  const compliance = AIQuotationEngine.checkMarginCompliance(currentSales, currentMargin);
+  const banner = document.getElementById('margin-compliance-banner');
+  const icon = document.getElementById('compliance-icon');
+  const text = document.getElementById('compliance-text');
+
+  if (icon && text && banner) {
+    icon.className = `fa-solid ${compliance.icon} text-sm`;
+    text.innerText = compliance.message;
+
+    if (compliance.status === 'BELOW_STANDARD') {
+      banner.className = 'flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 rounded-lg bg-red-950/40 border border-red-500/40 text-xs gap-2 text-red-200';
+    } else if (compliance.status === 'ABOVE_STANDARD') {
+      banner.className = 'flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 rounded-lg bg-blue-950/40 border border-blue-500/40 text-xs gap-2 text-blue-200';
+    } else {
+      banner.className = 'flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs gap-2 text-emerald-200';
+    }
+  }
+}
+
+// 點擊特定級距卡片，套用該級距之標準預設毛利率
+function applyTierDefault(tierId) {
+  const rule = AIQuotationEngine.MARGIN_POLICY_RULES.find(r => r.id === tierId);
+  if (!rule) return;
+  applyPresetMargin(rule.defaultMargin);
+}
+
+// 一鍵套用當前金額適用級距之標準推薦毛利率
+function applyActiveTierDefault() {
+  const currentSales = AppState.workstation.subtotal || 0;
+  const rule = AIQuotationEngine.getPolicyRuleForAmount(currentSales);
+  applyPresetMargin(rule.defaultMargin);
 }
 
 // 設定打包模式
@@ -557,6 +629,7 @@ function recalcFromItems() {
 
   renderWorkstationItemsTable();
   updateFinancialKPIs();
+  updatePolicyTierHighlight();
 }
 
 // 更新財務 KPI 看板數值
@@ -588,6 +661,7 @@ function updateWorkstationUI() {
 
   reformatWorkstationItems();
   updateFinancialKPIs();
+  updatePolicyTierHighlight();
 }
 
 // 收集當前工作站報價單物件
