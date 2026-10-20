@@ -394,8 +394,8 @@ const AIQuotationEngine = {
    */
   formatSalesItems(vendorItems, bundleMode, bundleName, salesSubtotal, totalCost) {
     if (bundleMode) {
-      // 打包為 1 式
-      const noteSummary = vendorItems.map(it => `${it.item_name}(${it.quantity}${it.unit})`).join('、');
+      // 打包為 1 式，規格備註以清楚的分行條列呈現
+      const noteSummary = vendorItems.map(it => `• ${it.item_name} (${it.quantity}${it.unit})`).join('\n');
       return [
         {
           item_index: 1,
@@ -406,7 +406,7 @@ const AIQuotationEngine = {
           sales_price: salesSubtotal,
           subtotal: salesSubtotal,
           margin_rate: totalCost > 0 ? Number((((salesSubtotal - totalCost) / salesSubtotal) * 100).toFixed(2)) : 0,
-          notes: noteSummary ? `包含：${noteSummary}` : ''
+          notes: noteSummary ? `包含：\n${noteSummary}` : ''
         }
       ];
     } else {

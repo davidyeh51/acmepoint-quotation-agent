@@ -543,34 +543,34 @@ function reformatWorkstationItems() {
   renderWorkstationItemsTable();
 }
 
-// 渲染工作站表格列
+// 渲染工作站表格列 (支援長品名自動縮放與規格備註 Enter 自行換行)
 function renderWorkstationItemsTable() {
   const tbody = document.getElementById('ws-quote-items-tbody');
   if (!tbody) return;
 
   tbody.innerHTML = AppState.workstation.items.map((it, idx) => `
-    <tr class="hover:bg-slate-50">
-      <td class="p-2.5 text-center font-bold text-slate-600">${idx + 1}</td>
-      <td class="p-2.5">
-        <input type="text" value="${it.item_name}" onchange="onItemFieldChange(${idx}, 'item_name', this.value)" class="w-full p-1 border border-slate-300 rounded font-semibold text-slate-800">
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-2.5 text-center font-bold text-slate-600 align-top pt-3">${idx + 1}</td>
+      <td class="p-2.5 align-top">
+        <textarea rows="2" onchange="onItemFieldChange(${idx}, 'item_name', this.value)" class="w-full p-1.5 border border-slate-300 rounded font-semibold text-slate-800 text-xs resize-y focus:ring-1 focus:ring-blue-500" placeholder="工程項目名稱（支援長篇名稱）">${it.item_name}</textarea>
       </td>
-      <td class="p-2.5 text-center">
-        <input type="text" value="${it.unit}" onchange="onItemFieldChange(${idx}, 'unit', this.value)" class="w-12 p-1 border border-slate-300 rounded text-center">
+      <td class="p-2.5 text-center align-top pt-3">
+        <input type="text" value="${it.unit}" onchange="onItemFieldChange(${idx}, 'unit', this.value)" class="w-12 p-1 border border-slate-300 rounded text-center text-xs">
       </td>
-      <td class="p-2.5 text-center">
-        <input type="number" value="${it.quantity}" onchange="onItemFieldChange(${idx}, 'quantity', this.value)" class="w-16 p-1 border border-slate-300 rounded text-center">
+      <td class="p-2.5 text-center align-top pt-3">
+        <input type="number" value="${it.quantity}" onchange="onItemFieldChange(${idx}, 'quantity', this.value)" class="w-16 p-1 border border-slate-300 rounded text-center text-xs">
       </td>
-      <td class="p-2.5 text-right">
-        <input type="number" value="${it.sales_price}" onchange="onItemFieldChange(${idx}, 'sales_price', this.value)" class="w-24 p-1 border border-slate-300 rounded text-right font-mono">
+      <td class="p-2.5 text-right align-top pt-3">
+        <input type="number" value="${it.sales_price}" onchange="onItemFieldChange(${idx}, 'sales_price', this.value)" class="w-24 p-1 border border-slate-300 rounded text-right font-mono text-xs">
       </td>
-      <td class="p-2.5 text-right font-mono font-bold text-slate-800">
+      <td class="p-2.5 text-right font-mono font-bold text-slate-800 align-top pt-3">
         NT$ ${(it.subtotal || (it.quantity * it.sales_price)).toLocaleString()}
       </td>
-      <td class="p-2.5">
-        <input type="text" value="${it.notes || ''}" onchange="onItemFieldChange(${idx}, 'notes', this.value)" placeholder="規格備註" class="w-full p-1 border border-slate-300 rounded text-slate-600">
+      <td class="p-2.5 align-top">
+        <textarea rows="3" onchange="onItemFieldChange(${idx}, 'notes', this.value)" placeholder="規格備註（支援 Enter 自由換行）" class="w-full p-1.5 border border-slate-300 rounded text-slate-700 text-xs resize-y leading-relaxed font-sans focus:ring-1 focus:ring-blue-500">${it.notes || ''}</textarea>
       </td>
-      <td class="p-2.5 text-center">
-        <button onclick="deleteQuoteItemRow(${idx})" class="text-slate-400 hover:text-red-500 transition"><i class="fa-solid fa-trash-can"></i></button>
+      <td class="p-2.5 text-center align-top pt-3">
+        <button onclick="deleteQuoteItemRow(${idx})" class="text-slate-400 hover:text-red-500 transition" title="刪除項目"><i class="fa-solid fa-trash-can"></i></button>
       </td>
     </tr>
   `).join('');
@@ -737,17 +737,23 @@ function previewPrintAction() {
   document.getElementById('preview-sign-cust-name').innerText = q.customer_name;
   document.getElementById('preview-sign-sales-rep').innerText = q.sales_rep;
 
-  // 渲染表格列
+  const signTaxId = document.getElementById('preview-sign-taxid');
+  if (signTaxId) {
+    const cust = AppState.customers.find(c => c.id === q.customer_id || c.name === q.customer_name);
+    signTaxId.innerText = (cust && cust.tax_id) ? cust.tax_id : (q.customer_tax_id || '83124567');
+  }
+
+  // 渲染表格列 (工程項目長名自動換行，規格備註完整呈現換行格式)
   const tbody = document.getElementById('preview-items-tbody');
   tbody.innerHTML = q.items.map((it, idx) => `
     <tr class="border-b border-slate-800">
-      <td class="border border-slate-800 p-2 text-center font-bold">${idx + 1}</td>
-      <td class="border border-slate-800 p-2 font-semibold">${it.item_name}</td>
-      <td class="border border-slate-800 p-2 text-center">${it.unit}</td>
-      <td class="border border-slate-800 p-2 text-center font-mono">${it.quantity}</td>
-      <td class="border border-slate-800 p-2 text-right font-mono">NT$ ${(it.sales_price || 0).toLocaleString()}</td>
-      <td class="border border-slate-800 p-2 text-right font-mono font-bold">NT$ ${(it.subtotal || (it.quantity * it.sales_price)).toLocaleString()}</td>
-      <td class="border border-slate-800 p-2 text-slate-600">${it.notes || ''}</td>
+      <td class="border border-slate-800 p-2 text-center font-bold align-top">${idx + 1}</td>
+      <td class="border border-slate-800 p-2 font-semibold break-words leading-relaxed align-top">${(it.item_name || '').replace(/\n/g, '<br>')}</td>
+      <td class="border border-slate-800 p-2 text-center align-top">${it.unit}</td>
+      <td class="border border-slate-800 p-2 text-center font-mono align-top">${it.quantity}</td>
+      <td class="border border-slate-800 p-2 text-right font-mono align-top">NT$ ${(it.sales_price || 0).toLocaleString()}</td>
+      <td class="border border-slate-800 p-2 text-right font-mono font-bold align-top">NT$ ${(it.subtotal || (it.quantity * it.sales_price)).toLocaleString()}</td>
+      <td class="border border-slate-800 p-2 text-slate-700 leading-relaxed whitespace-pre-wrap break-words align-top font-sans">${it.notes || ''}</td>
     </tr>
   `).join('');
 
@@ -756,7 +762,22 @@ function previewPrintAction() {
   document.getElementById('preview-tax-val').innerText = 'NT$ ' + (q.tax || 0).toLocaleString();
   document.getElementById('preview-total-val').innerText = 'NT$ ' + (q.total_amount || 0).toLocaleString();
 
+  // 確保印章狀態符合勾選
+  const stampChk = document.getElementById('toggle-stamp-chk');
+  if (stampChk) toggleStampVisibility(stampChk.checked);
+
   document.getElementById('quotation-preview-modal').classList.remove('hidden');
+}
+
+// 切換預覽報價單上的進金生官方印章顯示
+function toggleStampVisibility(checked) {
+  const stampBox = document.getElementById('preview-stamp-box');
+  if (!stampBox) return;
+  if (checked) {
+    stampBox.innerHTML = '<img id="preview-stamp-img" src="assets/stamp.jpg" alt="進金生能源發票章" class="h-24 w-auto object-contain opacity-90 drop-shadow-sm rotate-[-4deg] transition-all">';
+  } else {
+    stampBox.innerHTML = '<span class="text-slate-400 text-[11px]">【我司發票章 / 大小章用印處】</span>';
+  }
 }
 
 function closePreviewModal() {

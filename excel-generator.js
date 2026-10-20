@@ -18,15 +18,15 @@ const ExcelQuoteGenerator = {
     const wb = XLSX.utils.book_new();
     const ws = {};
 
-    // 1. 設定欄寬 (依據範本欄寬比例)
+    // 1. 設定欄寬 (工程項目與規格備註擴大加寬)
     ws['!cols'] = [
       { wch: 8 },   // A: 項次
-      { wch: 38 },  // B: 工程項目
+      { wch: 48 },  // B: 工程項目 (擴大寬度，支援長篇工程項目)
       { wch: 8 },   // C: 單位
       { wch: 12 },  // D: 數量(容量)
       { wch: 16 },  // E: 單價(未稅)
       { wch: 18 },  // F: 複價(未稅)
-      { wch: 36 }   // G: 規格備註
+      { wch: 48 }   // G: 規格備註 (擴大寬度，支援換行規格條列)
     ];
 
     // 輔助函式：設定儲存格
@@ -64,7 +64,7 @@ const ExcelQuoteGenerator = {
     setCell('B4', quote.project_name || '太陽光電設施運維工程');
     setCell('E4', '連絡人');
     setCell('F4', quote.contact_person || '');
-    setCell('G4', quote.contact_phone || '');
+    setCell('G4', (quote.contact_phone ? `連絡電話：${quote.contact_phone}` : ''));
 
     // 5. 表頭欄位 (Row 5 & 6)
     setCell('A5', '項次');
@@ -174,6 +174,16 @@ const ExcelQuoteGenerator = {
       { s: { r: signRow1 - 1, c: 0 }, e: { r: signRow1 - 1, c: 6 } },
       { s: { r: signRow2 - 1, c: 0 }, e: { r: signRow2 - 1, c: 6 } }
     ];
+
+    // 設定行高 (特別拉高最下方的雙方簽章與用印欄位，以利蓋公司與客戶印章)
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpt: 58 }; // Row 1 公司抬頭
+    ws['!rows'][1] = { hpt: 24 }; // Row 2 報價單
+    ws['!rows'][2] = { hpt: 40 }; // Row 3 客戶與地址
+    ws['!rows'][3] = { hpt: 24 }; // Row 4 工程與連絡人
+    ws['!rows'][termsRow - 1] = { hpt: 120 }; // Row 18 說明條款
+    ws['!rows'][signRow1 - 1] = { hpt: 85 };  // Row 19 簽章公司抬頭 (大幅拉高便於蓋印)
+    ws['!rows'][signRow2 - 1] = { hpt: 65 };  // Row 20 回簽簽名欄 (大幅拉高便於蓋印)
 
     // 設定工作表有效範圍
     ws['!ref'] = `A1:G${signRow2}`;

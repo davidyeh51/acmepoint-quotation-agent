@@ -562,12 +562,12 @@
               <thead class="bg-slate-100 text-slate-700 font-semibold uppercase tracking-wider border-b border-slate-200">
                 <tr>
                   <th class="p-2.5 w-12 text-center">項次</th>
-                  <th class="p-2.5 min-w-[200px]">工程項目</th>
+                  <th class="p-2.5 min-w-[240px]">工程項目 (支援長篇名稱)</th>
                   <th class="p-2.5 w-16 text-center">單位</th>
                   <th class="p-2.5 w-20 text-center">數量(容量)</th>
                   <th class="p-2.5 w-28 text-right">單價(未稅)</th>
                   <th class="p-2.5 w-28 text-right">複價(未稅)</th>
-                  <th class="p-2.5 min-w-[220px]">規格備註</th>
+                  <th class="p-2.5 min-w-[260px]">規格備註 (可 Enter 自由換行)</th>
                   <th class="p-2.5 w-12 text-center">操作</th>
                 </tr>
               </thead>
@@ -771,6 +771,11 @@
           <span class="font-bold text-sm">進金生能源服務 官方銷售報價單 擬真預覽</span>
         </div>
         <div class="flex items-center gap-2">
+          <!-- 印章顯示開關 -->
+          <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer no-print mr-2 bg-slate-800 px-2.5 py-1.5 rounded border border-slate-700 hover:bg-slate-700 transition">
+            <input type="checkbox" id="toggle-stamp-chk" checked onchange="toggleStampVisibility(this.checked)" class="accent-amber-400 rounded cursor-pointer">
+            <span>加蓋進金生公司印章</span>
+          </label>
           <button onclick="window.print()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition">
             <i class="fa-solid fa-print"></i>
             <span>直接列印 / 另存 PDF</span>
@@ -789,11 +794,17 @@
       <div class="flex-1 overflow-y-auto p-8 bg-slate-100">
         <div id="print-sheet-area" class="max-w-[210mm] mx-auto bg-white p-8 shadow-md border border-slate-300 font-sans text-slate-900 text-xs leading-relaxed space-y-4">
           
-          <!-- 公司抬頭 (Row 1) -->
-          <div class="text-right border-b border-slate-300 pb-3">
-            <div class="text-base font-bold text-slate-900 tracking-wide">進金生能源服務股份有限公司</div>
-            <div class="text-slate-600 text-[11px] mt-0.5">高雄市前鎮區中山二路2號14樓之3</div>
-            <div class="text-slate-600 text-[11px]">TEL:(07) 334-7879　FAX:(07) 334-0635</div>
+          <!-- 公司抬頭 (Row 1) 包含左上角公司 LOGO 與右上角聯絡資訊 -->
+          <div class="flex items-center justify-between border-b border-slate-300 pb-3">
+            <!-- 1. 左上角放上公司的 LOGO -->
+            <div class="flex items-center gap-3">
+              <img id="print-company-logo" src="assets/logo.png" alt="進金生能源 ACMEPOINT" class="h-16 w-auto object-contain">
+            </div>
+            <div class="text-right">
+              <div class="text-base font-bold text-slate-900 tracking-wide">進金生能源服務股份有限公司</div>
+              <div class="text-slate-600 text-[11px] mt-0.5">高雄市前鎮區中山二路2號14樓之3</div>
+              <div class="text-slate-600 text-[11px]">TEL:(07) 334-7879　FAX:(07) 334-0635</div>
+            </div>
           </div>
 
           <!-- 報價單標題與日期 (Row 2) -->
@@ -812,26 +823,26 @@
             </div>
             <div class="grid grid-cols-12">
               <div class="col-span-2 bg-slate-100 font-bold p-2 text-center border-r border-slate-800 flex items-center justify-center">工程名稱</div>
-              <div class="col-span-4 p-2 font-bold border-r border-slate-800 flex items-center" id="preview-project-name">宇豐綠能(大安龜殼段)-除草工程</div>
-              <div class="col-span-2 bg-slate-100 font-bold p-2 text-center border-r border-slate-800 flex items-center justify-center">連絡人</div>
-              <div class="col-span-4 p-2 flex items-center justify-between">
-                <span id="preview-contact-person">廖基宏</span>
-                <span class="text-slate-600" id="preview-contact-phone">02-2717-4347#306</span>
-              </div>
+              <div class="col-span-4 p-2 font-bold border-r border-slate-800 flex items-center break-words" id="preview-project-name">宇豐綠能(大安龜殼段)-除草工程</div>
+              <div class="col-span-1 bg-slate-100 font-bold p-2 text-center border-r border-slate-800 flex items-center justify-center">連絡人</div>
+              <div class="col-span-2 p-2 border-r border-slate-800 flex items-center" id="preview-contact-person">廖基宏</div>
+              <!-- 2. 在客戶/連絡人後面加上連絡電話的欄位標題 -->
+              <div class="col-span-1 bg-slate-100 font-bold p-2 text-center border-r border-slate-800 flex items-center justify-center">連絡電話</div>
+              <div class="col-span-2 p-2 flex items-center font-mono font-medium" id="preview-contact-phone">02-2717-4347#306</div>
             </div>
           </div>
 
-          <!-- 表格項次 (Row 5 - 17) -->
+          <!-- 表格項次 (Row 5 - 17) 加寬工程項目欄位 -->
           <table class="w-full border-collapse border border-slate-800 text-xs">
             <thead>
               <tr class="bg-slate-100 font-bold text-center border-b border-slate-800">
                 <th class="border border-slate-800 p-2 w-10">項次</th>
-                <th class="border border-slate-800 p-2 text-left">工程項目</th>
+                <th class="border border-slate-800 p-2 text-left min-w-[170px] w-1/4">工程項目</th>
                 <th class="border border-slate-800 p-2 w-12">單位</th>
-                <th class="border border-slate-800 p-2 w-20">數量(容量)</th>
-                <th class="border border-slate-800 p-2 w-28 text-right">單價(未稅)</th>
-                <th class="border border-slate-800 p-2 w-28 text-right">複價(未稅)</th>
-                <th class="border border-slate-800 p-2 text-left">規格備註</th>
+                <th class="border border-slate-800 p-2 w-16">數量(容量)</th>
+                <th class="border border-slate-800 p-2 w-24 text-right">單價(未稅)</th>
+                <th class="border border-slate-800 p-2 w-24 text-right">複價(未稅)</th>
+                <th class="border border-slate-800 p-2 text-left min-w-[200px]">規格備註</th>
               </tr>
             </thead>
             <tbody id="preview-items-tbody">
@@ -867,15 +878,46 @@
             <div>發票事項：三聯式電子發票</div>
           </div>
 
-          <!-- 雙方回簽欄位 (Row 19 & 20) -->
-          <div class="border border-slate-800 p-4 grid grid-cols-2 gap-8 text-xs">
-            <div class="space-y-8">
-              <div class="font-bold text-slate-800" id="preview-sign-cust-name">宇豐綠能股份有限公司</div>
-              <div class="text-slate-500 text-[11px]">請簽署回簽訂單：______________________</div>
+          <!-- 5. 雙方回簽欄位拉高，以利蓋上雙方的印章 (Row 19 & 20) -->
+          <div class="border border-slate-800 p-4 grid grid-cols-2 gap-6 text-xs">
+            <!-- 客戶回簽用印區 -->
+            <div class="flex flex-col justify-between min-h-[150px] pr-3 border-r border-slate-300">
+              <div>
+                <div class="font-bold text-sm text-slate-900" id="preview-sign-cust-name">宇豐綠能股份有限公司</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">客戶統一編號：<span id="preview-sign-taxid">83124567</span></div>
+              </div>
+              
+              <!-- 客戶印章預留空間 (充足高度便於實體或電子用印) -->
+              <div class="my-3 py-6 px-4 border border-dashed border-slate-300 rounded-lg text-center text-slate-400 text-[11px] flex items-center justify-center min-h-[90px] bg-slate-50/50">
+                <span>【客戶回簽用印處 / 公司發票章 / 大小章】</span>
+              </div>
+
+              <div class="space-y-1">
+                <div class="text-slate-700 text-xs font-medium">請簽署回簽訂單：______________________</div>
+                <div class="text-slate-500 text-[11px]">簽署日期：民國 ________ 年 ____ 月 ____ 日</div>
+              </div>
             </div>
-            <div class="space-y-8 text-right">
-              <div class="font-bold text-slate-800">進金生能源服務股份有限公司</div>
-              <div class="text-slate-600 text-[11px]">負責業務：<span id="preview-sign-sales-rep" class="font-bold text-slate-800">鍾依靜#3273</span></div>
+
+            <!-- 進金生能源服務 用印區 -->
+            <div class="flex flex-col justify-between min-h-[150px] pl-3 relative">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="font-bold text-sm text-slate-900">進金生能源服務股份有限公司</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">統一編號：24758118</div>
+                </div>
+              </div>
+
+              <!-- 我司印章區 (預載官方藍色圓形發票章，亦可切換留白手動蓋印) -->
+              <div class="my-3 relative flex items-center justify-center min-h-[90px] border border-dashed border-slate-300 rounded-lg bg-slate-50/50 overflow-hidden">
+                <div id="preview-stamp-box" class="flex items-center justify-center">
+                  <img id="preview-stamp-img" src="assets/stamp.jpg" alt="進金生能源發票章" class="h-24 w-auto object-contain opacity-90 drop-shadow-sm rotate-[-4deg] transition-all">
+                </div>
+              </div>
+
+              <div class="space-y-1 text-right">
+                <div class="text-slate-700 text-xs">負責業務：<span id="preview-sign-sales-rep" class="font-bold text-slate-900">鍾依靜#3273</span> 　簽章：____________</div>
+                <div class="text-slate-500 text-[11px]">服務專線：(07) 334-7879 #3273</div>
+              </div>
             </div>
           </div>
 
