@@ -718,24 +718,32 @@ function generateExcelAction() {
   alert(`官方 Excel 報價單已成功生成並下載：\n${filename}`);
 }
 
-// 預覽與列印 PDF
-function previewPrintAction() {
+// 同步更新報價單預覽與列印區內容
+function syncQuotationPreviewData() {
   const q = getCurrentWorkstationQuoteData('APPROVED');
-  
-  document.getElementById('preview-quote-date').innerText = q.quote_date.replace(/-/g, '/');
-  document.getElementById('preview-customer-name').innerText = q.customer_name;
-  document.getElementById('preview-site-address').innerText = q.site_address;
-  document.getElementById('preview-project-name').innerText = q.project_name;
-  document.getElementById('preview-contact-person').innerText = q.contact_person;
-  document.getElementById('preview-contact-phone').innerText = q.contact_phone;
+  if (!q) return;
 
-  document.getElementById('preview-terms-delivery').innerText = q.delivery_terms;
-  document.getElementById('preview-terms-payment').innerText = q.payment_terms;
-  document.getElementById('preview-terms-acceptance').innerText = q.acceptance_terms;
-  document.getElementById('preview-terms-warranty').innerText = q.warranty_terms;
+  const dateEl = document.getElementById('preview-quote-date');
+  if (dateEl && q.quote_date) dateEl.innerText = q.quote_date.replace(/-/g, '/');
 
-  document.getElementById('preview-sign-cust-name').innerText = q.customer_name;
-  document.getElementById('preview-sign-sales-rep').innerText = q.sales_rep;
+  const setTxt = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = val || '';
+  };
+
+  setTxt('preview-customer-name', q.customer_name);
+  setTxt('preview-site-address', q.site_address);
+  setTxt('preview-project-name', q.project_name);
+  setTxt('preview-contact-person', q.contact_person);
+  setTxt('preview-contact-phone', q.contact_phone);
+
+  setTxt('preview-terms-delivery', q.delivery_terms);
+  setTxt('preview-terms-payment', q.payment_terms);
+  setTxt('preview-terms-acceptance', q.acceptance_terms);
+  setTxt('preview-terms-warranty', q.warranty_terms);
+
+  setTxt('preview-sign-cust-name', q.customer_name);
+  setTxt('preview-sign-sales-rep', q.sales_rep);
 
   const signTaxId = document.getElementById('preview-sign-taxid');
   if (signTaxId) {
@@ -745,29 +753,39 @@ function previewPrintAction() {
 
   // 渲染表格列 (工程項目長名自動換行，規格備註完整呈現換行格式)
   const tbody = document.getElementById('preview-items-tbody');
-  tbody.innerHTML = q.items.map((it, idx) => `
-    <tr class="border-b border-slate-800">
-      <td class="border border-slate-800 p-2 text-center font-bold align-top">${idx + 1}</td>
-      <td class="border border-slate-800 p-2 font-semibold break-words leading-relaxed align-top">${(it.item_name || '').replace(/\n/g, '<br>')}</td>
-      <td class="border border-slate-800 p-2 text-center align-top">${it.unit}</td>
-      <td class="border border-slate-800 p-2 text-center font-mono align-top">${it.quantity}</td>
-      <td class="border border-slate-800 p-2 text-right font-mono align-top">NT$ ${(it.sales_price || 0).toLocaleString()}</td>
-      <td class="border border-slate-800 p-2 text-right font-mono font-bold align-top">NT$ ${(it.subtotal || (it.quantity * it.sales_price)).toLocaleString()}</td>
-      <td class="border border-slate-800 p-2 text-slate-700 leading-relaxed whitespace-pre-wrap break-words align-top font-sans">${it.notes || ''}</td>
-    </tr>
-  `).join('');
+  if (tbody && q.items) {
+    tbody.innerHTML = q.items.map((it, idx) => `
+      <tr class="border-b border-slate-800">
+        <td class="border border-slate-800 p-2 text-center font-bold align-top">${idx + 1}</td>
+        <td class="border border-slate-800 p-2 font-semibold break-words leading-relaxed align-top">${(it.item_name || '').replace(/\n/g, '<br>')}</td>
+        <td class="border border-slate-800 p-2 text-center align-top">${it.unit}</td>
+        <td class="border border-slate-800 p-2 text-center font-mono align-top">${it.quantity}</td>
+        <td class="border border-slate-800 p-2 text-right font-mono align-top">NT$ ${(it.sales_price || 0).toLocaleString()}</td>
+        <td class="border border-slate-800 p-2 text-right font-mono font-bold align-top">NT$ ${(it.subtotal || (it.quantity * it.sales_price)).toLocaleString()}</td>
+        <td class="border border-slate-800 p-2 text-slate-700 leading-relaxed whitespace-pre-wrap break-words align-top font-sans">${it.notes || ''}</td>
+      </tr>
+    `).join('');
+  }
 
-  document.getElementById('preview-subtotal-label').innerText = `合計(${q.items.length}項)`;
-  document.getElementById('preview-subtotal-val').innerText = 'NT$ ' + (q.subtotal || 0).toLocaleString();
-  document.getElementById('preview-tax-val').innerText = 'NT$ ' + (q.tax || 0).toLocaleString();
-  document.getElementById('preview-total-val').innerText = 'NT$ ' + (q.total_amount || 0).toLocaleString();
+  setTxt('preview-subtotal-label', `合計(${q.items ? q.items.length : 0}項)`);
+  setTxt('preview-subtotal-val', 'NT$ ' + (q.subtotal || 0).toLocaleString());
+  setTxt('preview-tax-val', 'NT$ ' + (q.tax || 0).toLocaleString());
+  setTxt('preview-total-val', 'NT$ ' + (q.total_amount || 0).toLocaleString());
 
-  // 確保印章狀態符合勾選
   const stampChk = document.getElementById('toggle-stamp-chk');
   if (stampChk) toggleStampVisibility(stampChk.checked);
+}
 
+// 預覽與列印 PDF
+function previewPrintAction() {
+  syncQuotationPreviewData();
   document.getElementById('quotation-preview-modal').classList.remove('hidden');
 }
+
+// 監聽列印事件 (包含 Ctrl+P) 自動保證最新資料
+window.addEventListener('beforeprint', () => {
+  syncQuotationPreviewData();
+});
 
 // 切換預覽報價單上的進金生官方印章顯示
 function toggleStampVisibility(checked) {

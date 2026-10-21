@@ -43,23 +43,115 @@
   </script>
   <style>
     @media print {
-      body * {
-        visibility: hidden;
+      /* 強制單頁 A4 直向列印，設定精準邊界 */
+      @page {
+        size: A4 portrait;
+        margin: 8mm 10mm 8mm 10mm;
       }
-      #print-sheet-area, #print-sheet-area * {
-        visibility: visible;
+      
+      html, body {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
-      #print-sheet-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        background: white;
-      }
-      .no-print {
+
+      /* 徹底隱藏無關元素，釋放非列印區在 DOM 中的幾何高度，絕不產生多餘空白頁 */
+      header, main, footer, #config-modal, #new-cust-modal, #new-vendor-modal, #signed-modal, .no-print {
         display: none !important;
+      }
+
+      /* 解除 modal 的 fixed 結構、滾動條與模糊遮罩，轉為標準純白文檔流 */
+      #quotation-preview-modal {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+        z-index: auto !important;
+      }
+
+      #quotation-preview-modal > div {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+      }
+
+      #quotation-preview-modal > div > div.flex-1 {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+      }
+
+      /* 列印報價單核心區塊：嚴格鎖定單頁直向 */
+      #print-sheet-area {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-before: avoid !important;
+        page-break-after: avoid !important;
+      }
+
+      /* 列印內部間距微調，保障各區塊適配單頁 A4 */
+      #print-sheet-area > * + * {
+        margin-top: 10px !important;
+      }
+
+      #print-sheet-area table th, 
+      #print-sheet-area table td {
+        padding: 4px 6px !important;
+      }
+
+      #print-sheet-area .min-h-\[150px\] {
+        min-height: 120px !important;
+      }
+
+      #print-sheet-area .min-h-\[90px\] {
+        min-height: 75px !important;
+      }
+
+      #preview-stamp-img {
+        height: 72px !important;
       }
     }
   </style>
