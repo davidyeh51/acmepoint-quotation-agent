@@ -163,20 +163,7 @@ function switchTab(tabId) {
 
 // 業務員變更
 function onSalesRepChange(val) {
-  if (val === '自訂業務') {
-    const custom = prompt('請輸入您的姓名與分機 (例如: 王業務#3299):');
-    if (custom) {
-      AppState.activeSalesRep = custom;
-      const select = document.getElementById('header-sales-rep');
-      const opt = document.createElement('option');
-      opt.value = custom;
-      opt.innerText = custom;
-      opt.selected = true;
-      select.prepend(opt);
-    }
-  } else {
-    AppState.activeSalesRep = val;
-  }
+  AppState.activeSalesRep = val;
   AppState.workstation.salesRep = AppState.activeSalesRep;
   const termsRep = document.getElementById('terms-sales-rep');
   if (termsRep) termsRep.value = AppState.activeSalesRep;
@@ -761,6 +748,9 @@ function syncQuotationPreviewData() {
 
   setTxt('preview-sign-cust-name', q.customer_name);
   setTxt('preview-sign-sales-rep', q.sales_rep);
+  // 服務專線分機跟隨負責業務 (例如 黃鈺祺#3275 → #3275)
+  const extMatch = (q.sales_rep || '').match(/#\d+/);
+  setTxt('preview-sign-sales-ext', extMatch ? extMatch[0] : '');
 
   const signTaxId = document.getElementById('preview-sign-taxid');
   if (signTaxId) {
