@@ -792,9 +792,11 @@ function toggleStampVisibility(checked) {
   const stampBox = document.getElementById('preview-stamp-box');
   if (!stampBox) return;
   if (checked) {
-    stampBox.innerHTML = '<img id="preview-stamp-img" src="assets/stamp.jpg" alt="進金生能源發票章" class="h-24 w-auto object-contain opacity-90 drop-shadow-sm rotate-[-4deg] transition-all">';
+    stampBox.className = "flex items-center justify-center";
+    stampBox.innerHTML = '<img id="preview-stamp-img" src="assets/stamp.png" alt="進金生能源發票章" class="h-24 w-auto object-contain mix-blend-multiply select-none pointer-events-none transition-all">';
   } else {
-    stampBox.innerHTML = '<span class="text-slate-400 text-[11px]">【我司發票章 / 大小章用印處】</span>';
+    stampBox.className = "w-full my-1 py-6 px-4 border border-dashed border-slate-300 rounded-lg text-center text-slate-400 text-[11px] flex items-center justify-center min-h-[90px] bg-slate-50/50";
+    stampBox.innerHTML = '<span>【我司發票章 / 大小章用印處】</span>';
   }
 }
 

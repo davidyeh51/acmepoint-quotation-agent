@@ -146,12 +146,15 @@
         min-height: 120px !important;
       }
 
-      #print-sheet-area .min-h-\[90px\] {
+      #print-sheet-area .min-h-\[90px\],
+      #print-sheet-area .min-h-\[95px\] {
         min-height: 75px !important;
       }
 
       #preview-stamp-img {
         height: 72px !important;
+        mix-blend-mode: multiply !important;
+        -webkit-print-color-adjust: exact !important;
       }
     }
   </style>
@@ -985,7 +988,7 @@
               </div>
 
               <div class="space-y-1">
-                <div class="text-slate-700 text-xs font-medium">請簽署回簽訂單：______________________</div>
+                <div class="text-slate-700 text-xs font-medium">請簽署回簽訂單：</div>
                 <div class="text-slate-500 text-[11px]">簽署日期：民國 ________ 年 ____ 月 ____ 日</div>
               </div>
             </div>
@@ -999,10 +1002,10 @@
                 </div>
               </div>
 
-              <!-- 我司印章區 (預載官方藍色圓形發票章，亦可切換留白手動蓋印) -->
-              <div class="my-3 relative flex items-center justify-center min-h-[90px] border border-dashed border-slate-300 rounded-lg bg-slate-50/50 overflow-hidden">
+              <!-- 我司印章區 (預載官方藍色圓形發票章，高解析透明融底如同真實直接印上) -->
+              <div class="my-2 relative flex items-center justify-center min-h-[95px]">
                 <div id="preview-stamp-box" class="flex items-center justify-center">
-                  <img id="preview-stamp-img" src="assets/stamp.jpg" alt="進金生能源發票章" class="h-24 w-auto object-contain opacity-90 drop-shadow-sm rotate-[-4deg] transition-all">
+                  <img id="preview-stamp-img" src="assets/stamp.png" alt="進金生能源發票章" class="h-24 w-auto object-contain mix-blend-multiply select-none pointer-events-none transition-all">
                 </div>
               </div>
 
