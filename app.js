@@ -793,7 +793,7 @@ function toggleStampVisibility(checked) {
   if (!stampBox) return;
   if (checked) {
     stampBox.className = "flex items-center justify-center";
-    stampBox.innerHTML = '<img id="preview-stamp-img" src="assets/stamp.png" alt="進金生能源發票章" class="h-24 w-auto object-contain mix-blend-multiply select-none pointer-events-none transition-all">';
+    stampBox.innerHTML = '<img id="preview-stamp-img" src="assets/stamp-round.png" alt="進金生能源公司章" class="h-24 w-auto -rotate-1 opacity-90 object-contain mix-blend-multiply select-none pointer-events-none transition-all">';
   } else {
     stampBox.className = "w-full my-1 py-6 px-4 border border-dashed border-slate-300 rounded-lg text-center text-slate-400 text-[11px] flex items-center justify-center min-h-[90px] bg-slate-50/50";
     stampBox.innerHTML = '<span>【我司發票章 / 大小章用印處】</span>';
