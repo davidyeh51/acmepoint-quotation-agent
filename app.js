@@ -31,7 +31,7 @@ const AppState = {
     ]
   },
 
-  // 業務工作站當前定價狀態
+  // 業務工作區當前定價狀態
   workstation: {
     quoteId: 'd1111111-1111-1111-1111-111111111111',
     quoteNo: 'SQ-20261002-001',
@@ -75,7 +75,13 @@ const AppState = {
     }
   },
 
-  selectedQuoteForSigned: null
+  selectedQuoteForSigned: null,
+
+  // 目前預覽中的資料庫報價單 (null 代表預覽工作區內容)
+  previewQuote: null,
+
+  // 議價彈窗狀態
+  negotiation: null
 };
 
 // 頁面初始化
@@ -103,7 +109,7 @@ async function initApp() {
   // 3. 渲染客戶下拉選單
   renderCustomerSelect();
 
-  // 4. 初始化工作站預設展示
+  // 4. 初始化工作區預設展示
   updateWorkstationUI();
 
   // 5. 渲染報價單總覽與主檔列表
@@ -334,7 +340,7 @@ function renderAiExtractionResult(data) {
   `).join('');
 }
 
-// 將 AI 拆解成果導入業務工作站
+// 將 AI 拆解成果導入業務工作區
 function transferToWorkstation() {
   const vendorData = AppState.parsedVendorData;
   if (!vendorData || !vendorData.items || vendorData.items.length === 0) {
@@ -358,7 +364,7 @@ function transferToWorkstation() {
   switchTab('review-workstation');
 }
 
-// --- TAB 2: 業務毛利覆核工作站 ---
+// --- TAB 2: 業務毛利覆核工作區 ---
 
 // 客戶下拉選單渲染
 function renderCustomerSelect() {
@@ -543,7 +549,7 @@ function reformatWorkstationItems() {
   renderWorkstationItemsTable();
 }
 
-// 渲染工作站表格列 (支援長品名自動縮放與規格備註 Enter 自行換行)
+// 渲染工作區表格列 (支援長品名自動縮放與規格備註 Enter 自行換行)
 function renderWorkstationItemsTable() {
   const tbody = document.getElementById('ws-quote-items-tbody');
   if (!tbody) return;
@@ -643,7 +649,7 @@ function updateFinancialKPIs() {
   document.getElementById('kpi-margin').innerText = `${ws.marginRate} %`;
 }
 
-// 更新工作站所有基本控制欄位
+// 更新工作區所有基本控制欄位
 function updateWorkstationUI() {
   const ws = AppState.workstation;
   document.getElementById('ws-quote-no').value = ws.quoteNo;
@@ -664,7 +670,7 @@ function updateWorkstationUI() {
   updatePolicyTierHighlight();
 }
 
-// 收集當前工作站報價單物件
+// 收集當前工作區報價單物件
 function getCurrentWorkstationQuoteData(status = 'APPROVED') {
   const ws = AppState.workstation;
   return {
@@ -718,9 +724,20 @@ function generateExcelAction() {
   alert(`官方 Excel 報價單已成功生成並下載：\n${filename}`);
 }
 
+// 金額格式
+function formatNT(val) {
+  return 'NT$ ' + (Number(val) || 0).toLocaleString();
+}
+
+// 議價金額呈現：原價加刪除線，新價以紅字標示於下方
+function negotiatedPriceHtml(newVal, origVal) {
+  if (origVal == null || Number(origVal) === Number(newVal)) return formatNT(newVal);
+  return `<s class="text-slate-500 font-normal whitespace-nowrap">${formatNT(origVal)}</s><br><span class="text-red-600 whitespace-nowrap">${formatNT(newVal)}</span>`;
+}
+
 // 同步更新報價單預覽與列印區內容
 function syncQuotationPreviewData() {
-  const q = getCurrentWorkstationQuoteData('APPROVED');
+  const q = AppState.previewQuote || getCurrentWorkstationQuoteData('APPROVED');
   if (!q) return;
 
   const dateEl = document.getElementById('preview-quote-date');
@@ -760,17 +777,21 @@ function syncQuotationPreviewData() {
         <td class="border border-slate-800 p-2 font-semibold break-words leading-relaxed align-top">${(it.item_name || '').replace(/\n/g, '<br>')}</td>
         <td class="border border-slate-800 p-2 text-center align-top">${it.unit}</td>
         <td class="border border-slate-800 p-2 text-center font-mono align-top">${it.quantity}</td>
-        <td class="border border-slate-800 p-2 text-right font-mono align-top">NT$ ${(it.sales_price || 0).toLocaleString()}</td>
-        <td class="border border-slate-800 p-2 text-right font-mono font-bold align-top">NT$ ${(it.subtotal || (it.quantity * it.sales_price)).toLocaleString()}</td>
+        <td class="border border-slate-800 p-2 text-right font-mono align-top">${negotiatedPriceHtml(it.sales_price, it.original_sales_price)}</td>
+        <td class="border border-slate-800 p-2 text-right font-mono font-bold align-top">${negotiatedPriceHtml(it.subtotal || (it.quantity * it.sales_price), it.original_sales_price == null ? null : it.quantity * it.original_sales_price)}</td>
         <td class="border border-slate-800 p-2 text-slate-700 leading-relaxed whitespace-pre-wrap break-words align-top font-sans">${it.notes || ''}</td>
       </tr>
     `).join('');
   }
 
   setTxt('preview-subtotal-label', `合計(${q.items ? q.items.length : 0}項)`);
-  setTxt('preview-subtotal-val', 'NT$ ' + (q.subtotal || 0).toLocaleString());
-  setTxt('preview-tax-val', 'NT$ ' + (q.tax || 0).toLocaleString());
-  setTxt('preview-total-val', 'NT$ ' + (q.total_amount || 0).toLocaleString());
+  const setHtml = (id, html) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  };
+  setHtml('preview-subtotal-val', negotiatedPriceHtml(q.subtotal, q.original_subtotal));
+  setHtml('preview-tax-val', negotiatedPriceHtml(q.tax, q.original_tax));
+  setHtml('preview-total-val', negotiatedPriceHtml(q.total_amount, q.original_total_amount));
 
   const stampChk = document.getElementById('toggle-stamp-chk');
   if (stampChk) toggleStampVisibility(stampChk.checked);
@@ -778,6 +799,7 @@ function syncQuotationPreviewData() {
 
 // 預覽與列印 PDF
 function previewPrintAction() {
+  AppState.previewQuote = null;
   syncQuotationPreviewData();
   document.getElementById('quotation-preview-modal').classList.remove('hidden');
 }
@@ -802,6 +824,14 @@ function toggleStampVisibility(checked) {
 
 function closePreviewModal() {
   document.getElementById('quotation-preview-modal').classList.add('hidden');
+  AppState.previewQuote = null;
+}
+
+// 預覽資料庫中的報價單 (不覆蓋工作區內容)
+function previewStoredQuote(quote) {
+  AppState.previewQuote = quote;
+  syncQuotationPreviewData();
+  document.getElementById('quotation-preview-modal').classList.remove('hidden');
 }
 
 // --- TAB 3: 報價總覽與生命週期追蹤模組 ---
@@ -858,6 +888,7 @@ function renderQuoteLedger() {
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3">
           <span class="font-mono font-bold text-slate-800 block">${q.quote_no}</span>
+          ${isNegotiatedQuote(q) ? '<span class="inline-block mb-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">已議價</span>' : ''}
           <span class="text-[11px] text-slate-400">${q.quote_date}</span>
         </td>
         <td class="p-3 font-semibold text-slate-800">${q.customer_name}</td>
@@ -867,12 +898,13 @@ function renderQuoteLedger() {
         </td>
         <td class="p-3 font-medium text-slate-600">${q.sales_rep}</td>
         <td class="p-3 text-right font-mono text-slate-600">NT$ ${(q.total_cost || 0).toLocaleString()}</td>
-        <td class="p-3 text-right font-mono font-bold text-slate-900">NT$ ${(q.subtotal || 0).toLocaleString()}</td>
+        <td class="p-3 text-right font-mono font-bold text-slate-900">${negotiatedPriceHtml(q.subtotal, q.original_subtotal)}</td>
         <td class="p-3 text-center font-mono font-bold text-amber-600">${q.margin_rate}%</td>
         <td class="p-3 text-center">${statusBadge}</td>
         <td class="p-3 text-center space-x-1">
           <button onclick="exportQuoteById('${q.id}')" title="下載 Excel" class="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 rounded"><i class="fa-solid fa-file-excel"></i></button>
           <button onclick="previewQuoteById('${q.id}')" title="預覽 PDF" class="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 rounded"><i class="fa-solid fa-eye"></i></button>
+          <button onclick="openNegotiationModal('${q.id}')" title="議價調整，產出最終報價單" class="p-1.5 text-red-600 hover:text-red-800 bg-red-50 rounded"><i class="fa-solid fa-handshake"></i></button>
           <button onclick="openSignedModal('${q.id}')" title="登記客戶回簽" class="p-1.5 text-amber-600 hover:text-amber-800 bg-amber-50 rounded"><i class="fa-solid fa-signature"></i></button>
           <button onclick="deleteQuoteAction('${q.id}')" title="刪除" class="p-1.5 text-slate-400 hover:text-red-600 rounded"><i class="fa-solid fa-trash-can"></i></button>
         </td>
@@ -888,28 +920,145 @@ function exportQuoteById(id) {
 
 function previewQuoteById(id) {
   const quote = AppState.quotes.find(q => q.id === id);
-  if (!quote) return;
-  AppState.workstation = {
-    ...AppState.workstation,
-    ...quote,
-    terms: {
-      delivery: quote.delivery_terms || '依雙方約定為主。',
-      payment: quote.payment_terms || 'EOM 60 Days',
-      acceptance: quote.acceptance_terms || '請於工程完工後7日內安排驗收，若未能於7日內安排驗收，則視為驗收合格。工程若因不可歸責我司之因致無法驗收時，其逾15日時視同正式驗收。',
-      warranty: quote.warranty_terms || '依雙方約定',
-      validDays: quote.valid_days || 30,
-      invoice: quote.invoice_type || '三聯式電子發票'
-    }
-  };
-  updateWorkstationUI();
-  previewPrintAction();
+  if (quote) previewStoredQuote(quote);
 }
 
-async function deleteQuoteAction(id) {
-  if (!confirm('確定要刪除這筆報價紀錄嗎？')) return;
-  await SupabaseQuoteService.deleteSalesQuote(id);
-  AppState.quotes = await SupabaseQuoteService.getSalesQuotes();
-  renderQuoteLedger();
+// --- 議價：調出原報價單、手動調整最終價格，於同一筆報價單留存「初步報價」與「最終議價」 ---
+
+function isNegotiatedQuote(quote) {
+  return !!quote && quote.original_subtotal != null;
+}
+
+function getSortedQuoteItems(quote) {
+  return [...(quote.items || [])].sort((a, b) => (a.item_index || 0) - (b.item_index || 0));
+}
+
+function openNegotiationModal(id) {
+  const quote = AppState.quotes.find(q => q.id === id);
+  if (!quote) return;
+  // 再次議價時沿用第一次的初步報價，不覆蓋
+  AppState.negotiation = {
+    source: quote,
+    items: getSortedQuoteItems(quote).map(it => ({
+      ...it,
+      original_sales_price: it.original_sales_price != null ? Number(it.original_sales_price) : Number(it.sales_price) || 0,
+      sales_price: Number(it.sales_price) || 0
+    }))
+  };
+  document.getElementById('nego-quote-no').innerText = quote.quote_no;
+  document.getElementById('nego-project-name').innerText = `${quote.customer_name}｜${quote.project_name}`;
+  renderNegotiationTable();
+  document.getElementById('negotiation-modal').classList.remove('hidden');
+}
+
+function closeNegotiationModal() {
+  document.getElementById('negotiation-modal').classList.add('hidden');
+  AppState.negotiation = null;
+}
+
+function getNegotiationTotals() {
+  const items = AppState.negotiation.items;
+  const sum = (key) => items.reduce((acc, it) => acc + (Number(it.quantity) || 0) * (Number(it[key]) || 0), 0);
+  const originalSubtotal = sum('original_sales_price');
+  const subtotal = sum('sales_price');
+  return {
+    originalSubtotal,
+    originalTax: Math.round(originalSubtotal * 0.05),
+    originalTotal: originalSubtotal + Math.round(originalSubtotal * 0.05),
+    subtotal,
+    tax: Math.round(subtotal * 0.05),
+    total: subtotal + Math.round(subtotal * 0.05)
+  };
+}
+
+function renderNegotiationTable() {
+  const tbody = document.getElementById('nego-items-tbody');
+  if (!tbody || !AppState.negotiation) return;
+  tbody.innerHTML = AppState.negotiation.items.map((it, idx) => `
+    <tr>
+      <td class="p-2 text-center text-slate-500">${idx + 1}</td>
+      <td class="p-2 font-semibold text-slate-800 whitespace-pre-wrap">${it.item_name || ''}</td>
+      <td class="p-2 text-center">${it.quantity} ${it.unit || ''}</td>
+      <td class="p-2 text-right font-mono text-slate-500">${formatNT(it.original_sales_price)}</td>
+      <td class="p-2 text-right">
+        <input type="number" min="0" value="${it.sales_price}" oninput="onNegotiationPriceInput(${idx}, this.value)" class="w-28 p-1 border border-red-300 rounded text-right font-mono text-red-600 focus:ring-1 focus:ring-red-400">
+      </td>
+      <td class="p-2 text-right font-mono font-bold" id="nego-line-${idx}">${negotiatedPriceHtml(it.quantity * it.sales_price, it.quantity * it.original_sales_price)}</td>
+    </tr>
+  `).join('');
+  updateNegotiationTotals();
+}
+
+function onNegotiationPriceInput(idx, val) {
+  const it = AppState.negotiation.items[idx];
+  if (!it) return;
+  it.sales_price = Number(val) || 0;
+  const cell = document.getElementById(`nego-line-${idx}`);
+  if (cell) cell.innerHTML = negotiatedPriceHtml(it.quantity * it.sales_price, it.quantity * it.original_sales_price);
+  updateNegotiationTotals();
+}
+
+function updateNegotiationTotals() {
+  const t = getNegotiationTotals();
+  document.getElementById('nego-subtotal').innerHTML = negotiatedPriceHtml(t.subtotal, t.originalSubtotal);
+  document.getElementById('nego-total').innerHTML = negotiatedPriceHtml(t.total, t.originalTotal);
+  const diff = t.originalSubtotal - t.subtotal;
+  document.getElementById('nego-discount').innerText = diff > 0 ? `折讓 ${formatNT(diff)} (未稅)` : (diff < 0 ? `加價 ${formatNT(-diff)} (未稅)` : '價格未調整');
+}
+
+// 儲存最終議價 (覆寫同一筆報價單，並留存初步報價金額)，並開啟預覽
+async function saveNegotiatedQuote() {
+  const n = AppState.negotiation;
+  if (!n) return;
+  const src = n.source;
+  const t = getNegotiationTotals();
+  const totalCost = Number(src.total_cost) || 0;
+
+  const items = n.items.map((it, idx) => {
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.sales_price) || 0;
+    const cost = Number(it.cost_price) || 0;
+    return {
+      item_index: idx + 1,
+      item_name: it.item_name,
+      unit: it.unit,
+      quantity: qty,
+      cost_price: cost,
+      sales_price: price,
+      subtotal: qty * price,
+      margin_rate: price > 0 ? Number((((price - cost) / price) * 100).toFixed(2)) : 0,
+      notes: it.notes || '',
+      original_sales_price: it.original_sales_price
+    };
+  });
+
+  const { sales_quote_items, created_at, updated_at, ...rest } = src;
+  const quoteData = {
+    ...rest,
+    subtotal: t.subtotal,
+    tax: t.tax,
+    total_amount: t.total,
+    gross_profit: t.subtotal - totalCost,
+    margin_rate: t.subtotal > 0 ? Number((((t.subtotal - totalCost) / t.subtotal) * 100).toFixed(2)) : 0,
+    original_subtotal: t.originalSubtotal,
+    original_tax: t.originalTax,
+    original_total_amount: t.originalTotal,
+    items
+  };
+
+  try {
+    const saved = await SupabaseQuoteService.saveSalesQuote(quoteData, items);
+    if (saved.cloudError) {
+      alert('最終議價已暫存於本機，但雲端資料庫儲存失敗：' + saved.cloudError +
+        '\n\n若訊息提到 original_ 欄位，請先於 Supabase SQL Editor 執行 supabase-schema.sql 中的「議價欄位升級」段落。');
+    }
+    AppState.quotes = await SupabaseQuoteService.getSalesQuotes();
+    closeNegotiationModal();
+    renderQuoteLedger();
+    previewStoredQuote(saved.cloudError ? saved : (AppState.quotes.find(q => q.id === saved.id) || saved));
+  } catch (err) {
+    alert('儲存最終議價失敗：' + err.message);
+  }
 }
 
 // 登記客戶回簽彈窗

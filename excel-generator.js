@@ -29,8 +29,12 @@ const ExcelQuoteGenerator = {
       { wch: 48 }   // G: 規格備註 (擴大寬度，支援換行規格條列)
     ];
 
+    // 議價樣式：原價刪除線、新價紅字 (需 xlsx-js-style 支援儲存格樣式)
+    const STRIKE_STYLE = { font: { strike: true } };
+    const NEW_PRICE_STYLE = { font: { color: { rgb: 'FF0000' } } };
+
     // 輔助函式：設定儲存格
-    function setCell(coord, value, formula = null, type = 's') {
+    function setCell(coord, value, formula = null, type = 's', style = null) {
       const cell = { v: value };
       if (typeof value === 'number') {
         cell.t = 'n';
@@ -40,6 +44,9 @@ const ExcelQuoteGenerator = {
       }
       if (formula) {
         cell.f = formula;
+      }
+      if (style) {
+        cell.s = style;
       }
       ws[coord] = cell;
     }
@@ -88,28 +95,44 @@ const ExcelQuoteGenerator = {
       }
     ];
 
+    // 議價最終報價單：原價以刪除線呈現，新價以紅字寫在下一列
+    const isNegotiated = quote.original_subtotal != null;
+
     let startRow = 7;
+    let r = startRow;
     items.forEach((item, idx) => {
-      const r = startRow + idx;
       const qty = Number(item.quantity) || 1;
       const price = Number(item.sales_price) || 0;
       const lineSubtotal = qty * price;
+      const origPrice = item.original_sales_price;
+      const priceChanged = origPrice != null && Number(origPrice) !== price;
 
       setCell(`A${r}`, idx + 1, null, 'n');
       setCell(`B${r}`, item.item_name || '');
       setCell(`C${r}`, item.unit || '式');
       setCell(`D${r}`, qty, null, 'n');
-      setCell(`E${r}`, price, null, 'n');
-      setCell(`F${r}`, lineSubtotal, `D${r}*E${r}`, 'n');
       setCell(`G${r}`, item.notes || '');
+
+      if (priceChanged) {
+        setCell(`E${r}`, Number(origPrice), null, 'n', STRIKE_STYLE);
+        setCell(`F${r}`, qty * Number(origPrice), null, 'n', STRIKE_STYLE);
+        r++;
+        setCell(`E${r}`, price, null, 'n', NEW_PRICE_STYLE);
+        setCell(`F${r}`, lineSubtotal, null, 'n', NEW_PRICE_STYLE);
+      } else {
+        setCell(`E${r}`, price, null, 'n');
+        setCell(`F${r}`, lineSubtotal, isNegotiated ? null : `D${r}*E${r}`, 'n');
+      }
+      r++;
     });
+    const usedItemRows = r - startRow;
 
     // 保持標準範本的版面行數（至少 8 行間距）
-    const totalItemRows = Math.max(items.length, 8);
+    const totalItemRows = Math.max(usedItemRows, 8);
     const lastItemRow = startRow + totalItemRows - 1;
 
     // 填補空白行以維持典範格式
-    for (let r = startRow + items.length; r <= lastItemRow; r++) {
+    for (let r = startRow + usedItemRows; r <= lastItemRow; r++) {
       setCell(`A${r}`, '');
       setCell(`B${r}`, '');
       setCell(`C${r}`, '');
@@ -125,13 +148,22 @@ const ExcelQuoteGenerator = {
     const totalRow = taxRow + 1;
 
     setCell(`B${subtotalRow}`, `合計(${items.length}項)`);
-    setCell(`F${subtotalRow}`, quote.subtotal || 0, `SUM(F7:F${lastItemRow})`, 'n');
-
     setCell(`B${taxRow}`, '營業稅(5%)');
-    setCell(`F${taxRow}`, quote.tax || Math.round((quote.subtotal || 0) * 0.05), `F${subtotalRow}*0.05`, 'n');
-
     setCell(`B${totalRow}`, '總計(含稅)');
-    setCell(`F${totalRow}`, quote.total_amount || Math.round((quote.subtotal || 0) * 1.05), `F${subtotalRow}+F${taxRow}`, 'n');
+
+    if (isNegotiated) {
+      // 原合計於複價欄加刪除線，議價後金額以紅字寫在右側
+      setCell(`F${subtotalRow}`, quote.original_subtotal || 0, null, 'n', STRIKE_STYLE);
+      setCell(`F${taxRow}`, quote.original_tax || 0, null, 'n', STRIKE_STYLE);
+      setCell(`F${totalRow}`, quote.original_total_amount || 0, null, 'n', STRIKE_STYLE);
+      setCell(`G${subtotalRow}`, quote.subtotal || 0, null, 'n', NEW_PRICE_STYLE);
+      setCell(`G${taxRow}`, quote.tax || 0, null, 'n', NEW_PRICE_STYLE);
+      setCell(`G${totalRow}`, quote.total_amount || 0, null, 'n', NEW_PRICE_STYLE);
+    } else {
+      setCell(`F${subtotalRow}`, quote.subtotal || 0, `SUM(F7:F${lastItemRow})`, 'n');
+      setCell(`F${taxRow}`, quote.tax || Math.round((quote.subtotal || 0) * 0.05), `F${subtotalRow}*0.05`, 'n');
+      setCell(`F${totalRow}`, quote.total_amount || Math.round((quote.subtotal || 0) * 1.05), `F${subtotalRow}+F${taxRow}`, 'n');
+    }
 
     // 8. 官方條款說明 (Row totalRow + 1 - Merged A:G)
     const termsRow = totalRow + 1;

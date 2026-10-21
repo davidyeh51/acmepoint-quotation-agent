@@ -332,11 +332,18 @@ const SupabaseQuoteService = {
           bundle_item_name: quoteData.bundle_item_name || '除草工程',
           status: quoteData.status || 'APPROVED'
         };
+        // 議價留存：初步報價金額 (未議價的報價單不送出，相容尚未升級欄位的資料庫)
+        if (quoteData.original_subtotal != null) {
+          payload.original_subtotal = quoteData.original_subtotal;
+          payload.original_tax = quoteData.original_tax;
+          payload.original_total_amount = quoteData.original_total_amount;
+        }
         if (quoteData.id && !quoteData.id.startsWith('sq-')) {
           payload.id = quoteData.id;
         }
 
         const { data, error } = await client.from('sales_quotes').upsert([payload]).select();
+        if (error) savedQuote.cloudError = error.message;
         if (!error && data && data[0]) {
           savedQuote = data[0];
           quoteId = savedQuote.id;
@@ -353,9 +360,11 @@ const SupabaseQuoteService = {
               sales_price: it.sales_price || 0,
               subtotal: it.subtotal || 0,
               margin_rate: it.margin_rate || 0,
-              notes: it.notes || ''
+              notes: it.notes || '',
+              ...(it.original_sales_price != null ? { original_sales_price: it.original_sales_price } : {})
             }));
-            await client.from('sales_quote_items').insert(itemPayloads);
+            const { error: itemsError } = await client.from('sales_quote_items').insert(itemPayloads);
+            if (itemsError) savedQuote.cloudError = itemsError.message;
           }
         }
       } catch(e) {
