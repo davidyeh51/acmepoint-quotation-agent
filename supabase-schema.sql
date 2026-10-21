@@ -98,6 +98,11 @@ CREATE TABLE IF NOT EXISTS public.sales_quotes (
     total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,   -- 總計 (含稅)
     gross_profit NUMERIC(12, 2) NOT NULL DEFAULT 0,   -- 毛利額 (subtotal - total_cost)
     margin_rate NUMERIC(6, 2) NOT NULL DEFAULT 0,     -- 毛利率 %
+
+    -- 議價留存：初步報價金額 (NULL 代表未議價；上方 subtotal/tax/total_amount 為最終議價金額)
+    original_subtotal NUMERIC(12, 2),                 -- 初步報價合計 (未稅)
+    original_tax NUMERIC(12, 2),                      -- 初步報價營業稅
+    original_total_amount NUMERIC(12, 2),             -- 初步報價總計 (含稅)
     
     -- 打包模式標記 (true: 合併為1式報價; false: 保留分項報價)
     bundle_mode BOOLEAN NOT NULL DEFAULT true,
@@ -124,12 +129,20 @@ CREATE TABLE IF NOT EXISTS public.sales_quote_items (
     unit TEXT NOT NULL DEFAULT '式',           -- 單位
     quantity NUMERIC(10, 2) NOT NULL DEFAULT 1,-- 數量
     cost_price NUMERIC(12, 2) DEFAULT 0,       -- 原始成本單價
-    sales_price NUMERIC(12, 2) NOT NULL DEFAULT 0, -- 對外銷售單價 (未稅)
+    sales_price NUMERIC(12, 2) NOT NULL DEFAULT 0, -- 對外銷售單價 (未稅)，議價後為最終議價單價
+    original_sales_price NUMERIC(12, 2),       -- 初步報價單價 (未稅)，NULL 代表未議價
     subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0,    -- 複價 (未稅)
     margin_rate NUMERIC(6, 2) DEFAULT 0,       -- 該項毛利率 %
     notes TEXT,                                -- 規格備註
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 議價欄位升級 (既有資料庫請執行此段，可重複執行)
+ALTER TABLE public.sales_quotes ADD COLUMN IF NOT EXISTS original_subtotal NUMERIC(12, 2);
+ALTER TABLE public.sales_quotes ADD COLUMN IF NOT EXISTS original_tax NUMERIC(12, 2);
+ALTER TABLE public.sales_quotes ADD COLUMN IF NOT EXISTS original_total_amount NUMERIC(12, 2);
+ALTER TABLE public.sales_quote_items ADD COLUMN IF NOT EXISTS original_sales_price NUMERIC(12, 2);
+NOTIFY pgrst, 'reload schema';
 
 -- ==============================================================================
 -- 7. RLS 行級安全設定 (Row Level Security)

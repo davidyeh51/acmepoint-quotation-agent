@@ -84,9 +84,6 @@ const AppState = {
   negotiation: null
 };
 
-// 議價後最終報價單的單號後綴 (例如 SQ-20261002-001 → SQ-20261002-001-F)
-const FINAL_QUOTE_SUFFIX = '-F';
-
 // 頁面初始化
 document.addEventListener('DOMContentLoaded', async () => {
   await initApp();
@@ -832,7 +829,7 @@ function closePreviewModal() {
 
 // 預覽資料庫中的報價單 (不覆蓋工作區內容)
 function previewStoredQuote(quote) {
-  AppState.previewQuote = resolveNegotiatedQuote(quote);
+  AppState.previewQuote = quote;
   syncQuotationPreviewData();
   document.getElementById('quotation-preview-modal').classList.remove('hidden');
 }
@@ -891,7 +888,7 @@ function renderQuoteLedger() {
       <tr class="hover:bg-slate-50 transition">
         <td class="p-3">
           <span class="font-mono font-bold text-slate-800 block">${q.quote_no}</span>
-          ${isFinalQuote(q) ? '<span class="inline-block mb-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">議價最終報價</span>' : ''}
+          ${isNegotiatedQuote(q) ? '<span class="inline-block mb-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">已議價</span>' : ''}
           <span class="text-[11px] text-slate-400">${q.quote_date}</span>
         </td>
         <td class="p-3 font-semibold text-slate-800">${q.customer_name}</td>
@@ -901,7 +898,7 @@ function renderQuoteLedger() {
         </td>
         <td class="p-3 font-medium text-slate-600">${q.sales_rep}</td>
         <td class="p-3 text-right font-mono text-slate-600">NT$ ${(q.total_cost || 0).toLocaleString()}</td>
-        <td class="p-3 text-right font-mono font-bold text-slate-900">NT$ ${(q.subtotal || 0).toLocaleString()}</td>
+        <td class="p-3 text-right font-mono font-bold text-slate-900">${negotiatedPriceHtml(q.subtotal, q.original_subtotal)}</td>
         <td class="p-3 text-center font-mono font-bold text-amber-600">${q.margin_rate}%</td>
         <td class="p-3 text-center">${statusBadge}</td>
         <td class="p-3 text-center space-x-1">
@@ -918,7 +915,7 @@ function renderQuoteLedger() {
 
 function exportQuoteById(id) {
   const quote = AppState.quotes.find(q => q.id === id);
-  if (quote) ExcelQuoteGenerator.exportToExcel(resolveNegotiatedQuote(quote));
+  if (quote) ExcelQuoteGenerator.exportToExcel(quote);
 }
 
 function previewQuoteById(id) {
@@ -926,61 +923,29 @@ function previewQuoteById(id) {
   if (quote) previewStoredQuote(quote);
 }
 
-// --- 議價：調出原報價單、手動調整最終價格、產出最終報價單 ---
+// --- 議價：調出原報價單、手動調整最終價格，於同一筆報價單留存「初步報價」與「最終議價」 ---
 
-function isFinalQuote(quote) {
-  return !!(quote && quote.quote_no && quote.quote_no.endsWith(FINAL_QUOTE_SUFFIX));
-}
-
-function getBaseQuoteNo(quote) {
-  return isFinalQuote(quote) ? quote.quote_no.slice(0, -FINAL_QUOTE_SUFFIX.length) : quote.quote_no;
+function isNegotiatedQuote(quote) {
+  return !!quote && quote.original_subtotal != null;
 }
 
 function getSortedQuoteItems(quote) {
   return [...(quote.items || [])].sort((a, b) => (a.item_index || 0) - (b.item_index || 0));
 }
 
-// 為最終報價單補上原報價單價 (雲端資料庫未存原價，改由原報價單依項次對應) 與原合計
-function resolveNegotiatedQuote(quote) {
-  if (!isFinalQuote(quote)) return quote;
-  const baseNo = getBaseQuoteNo(quote);
-  const base = (AppState.quotes || []).find(q => q.quote_no === baseNo);
-  const baseItems = base ? getSortedQuoteItems(base) : [];
-
-  const items = getSortedQuoteItems(quote).map((it, idx) => {
-    const orig = it.original_sales_price ?? (baseItems[idx] ? baseItems[idx].sales_price : null);
-    return { ...it, original_sales_price: orig == null ? null : Number(orig) };
-  });
-  if (!items.some(it => it.original_sales_price != null)) return { ...quote, items };
-
-  const originalSubtotal = items.reduce((acc, it) => {
-    const price = it.original_sales_price != null ? it.original_sales_price : Number(it.sales_price) || 0;
-    return acc + (Number(it.quantity) || 0) * price;
-  }, 0);
-  const originalTax = Math.round(originalSubtotal * 0.05);
-  return {
-    ...quote,
-    items,
-    original_subtotal: originalSubtotal,
-    original_tax: originalTax,
-    original_total_amount: originalSubtotal + originalTax
-  };
-}
-
 function openNegotiationModal(id) {
   const quote = AppState.quotes.find(q => q.id === id);
   if (!quote) return;
-  const resolved = resolveNegotiatedQuote(quote);
+  // 再次議價時沿用第一次的初步報價，不覆蓋
   AppState.negotiation = {
-    source: resolved,
-    items: getSortedQuoteItems(resolved).map(it => ({
+    source: quote,
+    items: getSortedQuoteItems(quote).map(it => ({
       ...it,
-      original_sales_price: it.original_sales_price != null ? it.original_sales_price : Number(it.sales_price) || 0,
+      original_sales_price: it.original_sales_price != null ? Number(it.original_sales_price) : Number(it.sales_price) || 0,
       sales_price: Number(it.sales_price) || 0
     }))
   };
-  document.getElementById('nego-source-no').innerText = getBaseQuoteNo(quote);
-  document.getElementById('nego-final-no').innerText = getBaseQuoteNo(quote) + FINAL_QUOTE_SUFFIX;
+  document.getElementById('nego-quote-no').innerText = quote.quote_no;
   document.getElementById('nego-project-name').innerText = `${quote.customer_name}｜${quote.project_name}`;
   renderNegotiationTable();
   document.getElementById('negotiation-modal').classList.remove('hidden');
@@ -998,6 +963,7 @@ function getNegotiationTotals() {
   const subtotal = sum('sales_price');
   return {
     originalSubtotal,
+    originalTax: Math.round(originalSubtotal * 0.05),
     originalTotal: originalSubtotal + Math.round(originalSubtotal * 0.05),
     subtotal,
     tax: Math.round(subtotal * 0.05),
@@ -1040,13 +1006,11 @@ function updateNegotiationTotals() {
   document.getElementById('nego-discount').innerText = diff > 0 ? `折讓 ${formatNT(diff)} (未稅)` : (diff < 0 ? `加價 ${formatNT(-diff)} (未稅)` : '價格未調整');
 }
 
-// 儲存最終報價單 (原單號 + -F)，並開啟預覽
+// 儲存最終議價 (覆寫同一筆報價單，並留存初步報價金額)，並開啟預覽
 async function saveNegotiatedQuote() {
   const n = AppState.negotiation;
   if (!n) return;
   const src = n.source;
-  const finalNo = getBaseQuoteNo(src) + FINAL_QUOTE_SUFFIX;
-  const existing = AppState.quotes.find(q => q.quote_no === finalNo);
   const t = getNegotiationTotals();
   const totalCost = Number(src.total_cost) || 0;
 
@@ -1068,38 +1032,33 @@ async function saveNegotiatedQuote() {
     };
   });
 
-  const { sales_quote_items, created_at, updated_at, original_subtotal, original_tax, original_total_amount, ...rest } = src;
+  const { sales_quote_items, created_at, updated_at, ...rest } = src;
   const quoteData = {
     ...rest,
-    id: existing ? existing.id : undefined,
-    quote_no: finalNo,
-    quote_date: new Date().toISOString().slice(0, 10),
     subtotal: t.subtotal,
     tax: t.tax,
     total_amount: t.total,
     gross_profit: t.subtotal - totalCost,
     margin_rate: t.subtotal > 0 ? Number((((t.subtotal - totalCost) / t.subtotal) * 100).toFixed(2)) : 0,
-    status: 'APPROVED',
+    original_subtotal: t.originalSubtotal,
+    original_tax: t.originalTax,
+    original_total_amount: t.originalTotal,
     items
   };
 
   try {
     const saved = await SupabaseQuoteService.saveSalesQuote(quoteData, items);
+    if (saved.cloudError) {
+      alert('最終議價已暫存於本機，但雲端資料庫儲存失敗：' + saved.cloudError +
+        '\n\n若訊息提到 original_ 欄位，請先於 Supabase SQL Editor 執行 supabase-schema.sql 中的「議價欄位升級」段落。');
+    }
     AppState.quotes = await SupabaseQuoteService.getSalesQuotes();
     closeNegotiationModal();
     renderQuoteLedger();
-    const savedQuote = AppState.quotes.find(q => q.quote_no === saved.quote_no) || saved;
-    previewStoredQuote(savedQuote);
+    previewStoredQuote(saved.cloudError ? saved : (AppState.quotes.find(q => q.id === saved.id) || saved));
   } catch (err) {
-    alert('儲存最終報價單失敗：' + err.message);
+    alert('儲存最終議價失敗：' + err.message);
   }
-}
-
-async function deleteQuoteAction(id) {
-  if (!confirm('確定要刪除這筆報價紀錄嗎？')) return;
-  await SupabaseQuoteService.deleteSalesQuote(id);
-  AppState.quotes = await SupabaseQuoteService.getSalesQuotes();
-  renderQuoteLedger();
 }
 
 // 登記客戶回簽彈窗
